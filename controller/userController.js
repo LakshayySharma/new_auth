@@ -21,6 +21,7 @@ exports.signUp = async (req, res) => {
     res.json({
       msg: "Signup successful",
       token,
+      user,
     });
   } catch (error) {
     console.log(error);
@@ -78,7 +79,11 @@ exports.logout = async (req, res) => {
 };
 
 exports.test = async (req, res) => {
+  let user = req.user;
   res.json({
-    msg: "secret page",
+    authenticated: true,
+    user,
   });
 };
+
+exports.refresh = async (req, res) => {};
