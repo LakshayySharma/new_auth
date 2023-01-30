@@ -14,7 +14,7 @@ router.post("/signup", signUp);
 router.post("/login", login);
 router.post("/logout", logout);
 router.get("/test", auth, test);
-router.get("/refresh", auth, refresh);
+router.get("/refresh", refresh);
 // router.get("/me", auth, me);
 
 module.exports = router;

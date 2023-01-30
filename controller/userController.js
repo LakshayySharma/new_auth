@@ -9,18 +9,21 @@ exports.signUp = async (req, res) => {
     let payload = {
       id: user._id,
     };
-    let token = await jwt.sign(payload, process.env.SKEY, {
+    let refresh_token = jwt.sign(payload, process.env.RKEY, {
+      expiresIn: process.env.RJWT_EXPIRATION,
+    });
+    let access_token = jwt.sign({ id: user._id }, process.env.SKEY, {
       expiresIn: process.env.JWT_EXPIRATION,
     });
-    res.cookie("token", token, {
-      expires: new Date(Date.now() + 90 * 60 * 60 * 24),
+    res.cookie("refresh_token", refresh_token, {
+      expires: new Date(Date.now() + 90 * 1000 * 60 * 60 * 24),
       httpOnly: true,
       sameSite: "none",
       secure: true,
     });
     res.json({
       msg: "Signup successful",
-      token,
+      access_token,
       user,
     });
   } catch (error) {
@@ -39,10 +42,13 @@ exports.login = async (req, res) => {
     }
     let correct = await user.comparePassword(password, user.password);
     if (correct) {
-      let token = await jwt.sign({ id: user._id }, process.env.SKEY, {
+      let refresh_token = jwt.sign({ id: user._id }, process.env.RKEY, {
+        expiresIn: process.env.RJWT_EXPIRATION,
+      });
+      let access_token = jwt.sign({ id: user._id }, process.env.SKEY, {
         expiresIn: process.env.JWT_EXPIRATION,
       });
-      res.cookie("token", token, {
+      res.cookie("refresh_token", refresh_token, {
         expires: new Date(Date.now() + 90 * 1000 * 60 * 60 * 24),
         httpOnly: true,
         sameSite: "none",
@@ -51,7 +57,7 @@ exports.login = async (req, res) => {
       user = await User.findOne({ email: email }).select("-password");
       res.json({
         msg: "Login successful",
-        token,
+        access_token,
         user,
       });
     } else {
@@ -66,7 +72,7 @@ exports.login = async (req, res) => {
 
 exports.logout = async (req, res) => {
   try {
-    res.clearCookie("token", {
+    res.clearCookie("refresh_token", {
       sameSite: "none",
       secure: true,
     });
@@ -86,4 +92,27 @@ exports.test = async (req, res) => {
   });
 };
 
-exports.refresh = async (req, res) => {};
+exports.refresh = async (req, res) => {
+  try {
+    let token = req.cookies.refresh_token;
+    console.log(token);
+    if (!token) {
+      return res.status(401).json({ message: "Not authorised" });
+    } else {
+      let decoded_user = jwt.verify(token, process.env.RKEY);
+      let user = await User.findOne({ id: decoded_user.id }).select(
+        "-password"
+      );
+      console.log(user);
+      let access_token = jwt.sign({ id: user._id }, process.env.SKEY, {
+        expiresIn: process.env.JWT_EXPIRATION,
+      });
+      res.status(200).json({
+        access_token,
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    res.json(error);
+  }
+};
